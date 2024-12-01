@@ -8,11 +8,15 @@ from urllib.parse import unquote
 import threading
 import math
 import json
+import targeting
 
 # GPIO setup
 GPIO.setmode(GPIO.BCM)
 pins1 = [13, 16, 19, 20]
 pins2 = [17, 22, 23, 24]
+laser =10
+GPIO.setup(laser, GPIO.OUT)
+GPIO.output(laser,GPIO.LOW)
 
 # HTML for the web server
 def web_page():
@@ -32,6 +36,9 @@ def web_page():
             <label for="url2">Target Positions:</label>
             <input type="text" id="url2" name="url2" placeholder="Enter a valid URL" required /><br><br>
             <input type="submit" value="Upload">
+        </form>
+        <form action="/" method="POST">
+            <button name="phaseOne" type="submit" value="phase">Phase One</button><br><br>
         </form>
     </body>
     </html>
@@ -98,13 +105,13 @@ def calculateVector(teamLocation,height,targets,index):
     theta=math.degrees(math.atan2(yMod,xMod))
     return theta,phi
     
-    
-    
+
 
 
 # Web server to handle requests
 def server_web_page():
     angles=[]
+    GPIO.output(laser,GPIO.LOW)
     try:
         while True:
             conn, (client_ip, client_port) = s.accept()
@@ -116,6 +123,10 @@ def server_web_page():
                 data = parsePostData(client_message)
                 url1 = data.get("url1")
                 url2 = data.get("url2")
+                if data.get("led_toggle")=="toggle":
+                    state=GPIO.input(laser)
+                    GPIO.output(laser,not state)
+                    print(f"{state}")
                 if url1 and url2:
                     print("Fetching data...")
                     angles.clear()
@@ -160,23 +171,6 @@ if __name__ == '__main__':
 
     m1=targeting.Stepper(pins1,lock1,angle1)
     m2=targeting.Stepper(pins2,lock2,angle2)
-
-    # Zero the motors:
-    m1.zero()
-    m2.zero()
-
-    # Move as desired. Each step will occur as soon as the previous steps ends.
-    m1.goAngle(90)
-    m1.goAngle(-45)
-    m1.goAngle(180)
-    m1.goAngle(-135)
-    m1.goAngle(0)
-
-    m2.goAngle(-90)
-    m2.goAngle(-45)
-    m2.goAngle(-180)
-    m2.goAngle(135)
-    m2.goAngle(0)
     
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind(('', 8080))  
@@ -191,11 +185,14 @@ if __name__ == '__main__':
             pass
     except KeyboardInterrupt:
         print('Shutting down')
+        m1.goAngle(0)
+        m2.goAngle(0)
         for pwm in brightnesses:
             pwm.stop()
         GPIO.cleanup()
         webpageThread.join()
         s.close()
+
 
 
 
