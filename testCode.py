@@ -8,11 +8,15 @@ from urllib.parse import unquote
 import threading
 import math
 import json
+import targeting
 
 # GPIO setup
 GPIO.setmode(GPIO.BCM)
 pins1 = [13, 16, 19, 20]
 pins2 = [17, 22, 23, 24]
+laser =10
+GPIO.setup(laser, GPIO.OUT)
+GPIO.output(laser,GPIO.LOW)
 
 # HTML for the web server
 def web_page():
@@ -101,13 +105,13 @@ def calculateVector(teamLocation,height,targets,index):
     theta=math.degrees(math.atan2(yMod,xMod))
     return theta,phi
     
-    
-    
+
 
 
 # Web server to handle requests
 def server_web_page():
     angles=[]
+    GPIO.output(laser,GPIO.LOW)
     try:
         while True:
             conn, (client_ip, client_port) = s.accept()
@@ -119,6 +123,10 @@ def server_web_page():
                 data = parsePostData(client_message)
                 url1 = data.get("url1")
                 url2 = data.get("url2")
+                if data.get("led_toggle")=="toggle":
+                    state=GPIO.input(laser)
+                    GPIO.output(laser,not state)
+                    print(f"{state}")
                 if url1 and url2:
                     print("Fetching data...")
                     angles.clear()
@@ -148,7 +156,6 @@ def server_web_page():
         print(f"Server error: {e}")
     finally:
         conn.close()
-
 if __name__ == "__main__":
     # Initialize the server socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -171,4 +178,5 @@ if __name__ == "__main__":
         GPIO.cleanup()
         s.close()
         server_thread.join()
+
 
