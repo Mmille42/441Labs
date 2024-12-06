@@ -40,6 +40,16 @@ def web_page():
         <form action="/" method="POST">
             <button name="phaseOne" type="submit" value="phase">Phase One</button><br><br>
         </form>
+        <form actions="/" method="POST">
+            <label for="target1">Target 1:</label>
+            <input type="text" id="target1" name="target1" placeholder="Enter a Target number" required /><br><br>
+            <label for="target2">Target 2:</label>
+            <input type="text" id="target2" name="target2" placeholder="Enter a Target number" required /><br><br>
+            <label for="target3">Target 3:</label>
+            <input type="text" id="target3" name="target3" placeholder="Enter a Target number" required /><br><br>
+            <label for="target4">Target 4:</label>
+            <input type="text" id="target4" name="target4" placeholder="Enter a Target number" required /><br><br>
+            <input type="submit" value="PhaseTwo">
     </body>
     </html>
     """
@@ -101,8 +111,8 @@ def calculateVector(teamLocation,height,targets,index):
     zMod=zCord-locZ
     
     radius=math.sqrt(math.pow(xMod,2)+math.pow(yMod,2)+math.pow(zMod,2))
-    phi=math.degrees(math.acos(zMod/radius))
-    theta=math.degrees(math.atan2(yMod,xMod))
+    phi=math.degrees(math.acos(zMod/radius)) # Phi equals verticle movement
+    theta=math.degrees(math.atan2(yMod,xMod)) #Theta XY Plane
     return theta,phi
     
 
@@ -112,6 +122,7 @@ def calculateVector(teamLocation,height,targets,index):
 def server_web_page():
     angles=[]
     GPIO.output(laser,GPIO.LOW)
+    targets=[]
     try:
         while True:
             conn, (client_ip, client_port) = s.accept()
@@ -121,12 +132,39 @@ def server_web_page():
 
             if "POST" in client_message:
                 data = parsePostData(client_message)
-                url1 = data.get("url1")
-                url2 = data.get("url2")
-                if data.get("led_toggle")=="toggle":
+                
+                if data.get("led_toggle") == "toggle":
                     state=GPIO.input(laser)
                     GPIO.output(laser,not state)
                     print(f"{state}")
+                elif data.get("url1") and data.get("url2"):
+                    url1 = data.get("url1")
+                    url2 = data.get("url2")
+                elif data.get("phaseTwo") == "phasetwo":  # Moved this block up
+                    try:
+                        targets = [
+                            int(data.get("target1", 0)),
+                            int(data.get("target2", 0)),
+                            int(data.get("target3", 0)),
+                            int(data.get("target4", 0))]
+                    except ValueError:
+                        print("Invalid target input. Please enter numbers only.")
+                        targets = []
+                    
+                elif data.get("phaseOne")=="phaseOne":
+                    print(f"targets: {targets}")
+                elif data.get("phaseTwo") == "phasetwo":  # Moved this block up
+                    try:
+                        targets = [
+                        int(data.get("target1", 0)),
+                        int(data.get("target2", 0)),
+                        int(data.get("target3", 0)),
+                        int(data.get("target4", 0))]
+            except ValueError:
+                print("Invalid target input. Please enter numbers only.")
+                targets = []
+
+                    
                 if url1 and url2:
                     print("Fetching data...")
                     angles.clear()
@@ -134,10 +172,9 @@ def server_web_page():
                     targets = gatherData(url2)
                     team_info=listTeamData(teams)
                     target_info=listTargetData(targets)
-                    teamFound=findTeam(team_info, "Really boring")
+                    teamFound=findTeam(team_info, "Test")
                     for idx, tar in enumerate(target_info):
                         angles.append(calculateVector(teamFound,25.0,target_info,idx))
-                    
                     print(f"angles:{angles}")
                 else:
                     print("URLs missing in POST data.")
@@ -178,5 +215,4 @@ if __name__ == "__main__":
         GPIO.cleanup()
         s.close()
         server_thread.join()
-
 
