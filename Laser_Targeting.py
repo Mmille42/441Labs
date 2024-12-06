@@ -40,6 +40,16 @@ def web_page():
         <form action="/" method="POST">
             <button name="phaseOne" type="submit" value="phase">Phase One</button><br><br>
         </form>
+        <form actions="/" method="POST">
+            <label for="target1">Target 1:</label>
+            <input type="text" id="target1" name="taget1" placeholder="Enter a Target number" required /><br><br>
+            <label for="target2">Target 2:</label>
+            <input type="text" id="target2" name="target2" placeholder="Enter a Target number" required /><br><br>
+            <label for="target3">Target 3:</label>
+            <input type="text" id="target3" name="target3" placeholder="Enter a Target number" required /><br><br>
+            <label for="target4">Target 4:</label>
+            <input type="text" id="target4" name="target4" placeholder="Enter a Target number" required /><br><br>
+            <input type="submit" value="Upload">
     </body>
     </html>
     """
@@ -101,8 +111,8 @@ def calculateVector(teamLocation,height,targets,index):
     zMod=zCord-locZ
     
     radius=math.sqrt(math.pow(xMod,2)+math.pow(yMod,2)+math.pow(zMod,2))
-    phi=math.degrees(math.acos(zMod/radius))
-    theta=math.degrees(math.atan2(yMod,xMod))
+    phi=math.degrees(math.acos(zMod/radius)) # Phi equals verticle movement
+    theta=math.degrees(math.atan2(yMod,xMod)) #Theta XY Plane
     return theta,phi
     
 
@@ -134,7 +144,7 @@ def server_web_page():
                     targets = gatherData(url2)
                     team_info=listTeamData(teams)
                     target_info=listTargetData(targets)
-                    teamFound=findTeam(team_info, "Really boring")
+                    teamFound=findTeam(team_info, "Test")
                     for idx, tar in enumerate(target_info):
                         angles.append(calculateVector(teamFound,25.0,target_info,idx))
                     
@@ -192,6 +202,3 @@ if __name__ == '__main__':
         GPIO.cleanup()
         webpageThread.join()
         s.close()
-
-
-
