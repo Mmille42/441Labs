@@ -35,21 +35,22 @@ def web_page():
             <input type="text" id="url1" name="url1" placeholder="Enter a valid URL" required /><br><br>
             <label for="url2">Target Positions:</label>
             <input type="text" id="url2" name="url2" placeholder="Enter a valid URL" required /><br><br>
-            <input type="submit" value="Upload">
+            <input type="submit" name="upload" value="Upload">
         </form>
         <form action="/" method="POST">
-            <button name="phaseOne" type="submit" value="phase">Phase One</button><br><br>
+            <button name="phaseOne" type="submit" value="PhaseOne">Phase One</button><br><br>
         </form>
-        <form actions="/" method="POST">
+        <form action="/" method="POST">
             <label for="target1">Target 1:</label>
-            <input type="text" id="target1" name="taget1" placeholder="Enter a Target number" required /><br><br>
+            <input type="number" id="target1" name="target1" placeholder="Enter a Target number" required /><br><br>
             <label for="target2">Target 2:</label>
-            <input type="text" id="target2" name="target2" placeholder="Enter a Target number" required /><br><br>
+            <input type="number" id="target2" name="target2" placeholder="Enter a Target number" required /><br><br>
             <label for="target3">Target 3:</label>
-            <input type="text" id="target3" name="target3" placeholder="Enter a Target number" required /><br><br>
+            <input type="number" id="target3" name="target3" placeholder="Enter a Target number" required /><br><br>
             <label for="target4">Target 4:</label>
-            <input type="text" id="target4" name="target4" placeholder="Enter a Target number" required /><br><br>
-            <input type="submit" value="Upload">
+            <input type="number" id="target4" name="target4" placeholder="Enter a Target number" required /><br><br>
+            <input type="submit" name="phaseTwo" value="PhaseTwo">
+        </form>
     </body>
     </html>
     """
@@ -119,9 +120,12 @@ def calculateVector(teamLocation,height,targets,index):
 
 
 # Web server to handle requests
-def server_web_page():
+def serverWebPage():
     angles=[]
+    url1=None
+    url2=None
     GPIO.output(laser,GPIO.LOW)
+    targets=[]
     try:
         while True:
             conn, (client_ip, client_port) = s.accept()
@@ -131,27 +135,48 @@ def server_web_page():
 
             if "POST" in client_message:
                 data = parsePostData(client_message)
-                url1 = data.get("url1")
-                url2 = data.get("url2")
-                if data.get("led_toggle")=="toggle":
+                
+                if data.get("led_toggle") == "toggle":
                     state=GPIO.input(laser)
                     GPIO.output(laser,not state)
                     print(f"{state}")
-                if url1 and url2:
-                    print("Fetching data...")
-                    angles.clear()
-                    teams = gatherData(url1)
-                    targets = gatherData(url2)
-                    team_info=listTeamData(teams)
-                    target_info=listTargetData(targets)
-                    teamFound=findTeam(team_info, "Test")
-                    for idx, tar in enumerate(target_info):
-                        angles.append(calculateVector(teamFound,25.0,target_info,idx))
-                    
-                    print(f"angles:{angles}")
-                else:
-                    print("URLs missing in POST data.")
-                    print(f"angles:{angles}")
+                elif data.get("upload")=="Upload":  # Check if "Upload" button was pressed
+                    url1 = data.get("url1")
+                    url2 = data.get("url2")
+                    if url1 and url2:  # Only fetch data if both URLs are provided
+                        print("Fetching data...")
+                        angles.clear()
+                        teams = gatherData(url1)
+                        targets_data = gatherData(url2)
+                        team_info = listTeamData(teams)
+                        target_info = listTargetData(targets_data)
+                        teamFound = findTeam(team_info, "Test")
+                        for idx, tar in enumerate(target_info):
+                            angles.append(calculateVector(teamFound, 25.0, target_info, idx))
+                        print(f"angles: {angles}")
+                    else:
+                        print("URLs missing in POST data.")
+                elif data.get("phaseOne")=="PhaseOne":
+                    counter=0
+                    for angle in angles:
+                        m1.goAngle(angle[0])
+                        m2.goAngle(angle[1])
+                        print("{counter}")
+                        counter+=counter
+                elif data.get("phaseTwo") == "PhaseTwo":  # Ensure this matches the form's value
+                    try:
+                        targets = [
+                            int(data.get("target1", 0)),
+                            int(data.get("target2", 0)),
+                            int(data.get("target3", 0)),
+                            int(data.get("target4", 0))
+                            ]
+                        targets = [t for t in targets if t > 0]
+                        
+                    except ValueError:
+                        print("Invalid target input. Please enter numbers only.")
+                        targets = []
+                
 
             try:
                 conn.sendall(b"HTTP/1.1 200 OK\r\n")
@@ -174,21 +199,25 @@ if __name__ == '__main__':
     
     lock1 = multiprocessing.Lock()
     lock2 = multiprocessing.Lock()
-    
+    lock3=multiprocessing.Lock()
     
     angle1 = multiprocessing.Value('d', 0.0)  # 'd' is for double (float)
     angle2 = multiprocessing.Value('d', 0.0)
 
     m1=targeting.Stepper(pins1,lock1,angle1)
     m2=targeting.Stepper(pins2,lock2,angle2)
+    l1=
     
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(('', 8080))  
-    s.listen(3)  
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("", 8080))
+    s.listen(3)
+    print("Server started on port 8080.")
 
-    webpageThread = threading.Thread(target=serverWebPage)
-    webpageThread.daemon = True
-    webpageThread.start()
+    # Start the server in a separate thread
+    server_thread = threading.Thread(target=serverWebPage)
+    server_thread.daemon = True
+    server_thread.start()
 
     try:
         while True:
@@ -197,8 +226,10 @@ if __name__ == '__main__':
         print('Shutting down')
         m1.goAngle(0)
         m2.goAngle(0)
-        for pwm in brightnesses:
-            pwm.stop()
+    finally:
         GPIO.cleanup()
-        webpageThread.join()
         s.close()
+        server_thread.join()
+
+
+
