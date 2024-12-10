@@ -232,7 +232,6 @@ if __name__ == '__main__':
         print('Shutting down')
         m1.goAngle(0)
         m2.goAngle(0)
-    finally:
         GPIO.cleanup()
         s.close()
         server_thread.join()
