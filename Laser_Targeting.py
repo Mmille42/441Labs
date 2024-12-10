@@ -12,13 +12,14 @@ import targeting
 
 # GPIO setup
 GPIO.setmode(GPIO.BCM)
-pins1 = [13, 16, 19, 20]
-pins2 = [17, 22, 23, 24]
-laser =10
+pins1 = [12, 16, 20, 21]
+pins2 = [6, 13, 19, 26]
+laser =14
 GPIO.setup(laser, GPIO.OUT)
 GPIO.output(laser,GPIO.LOW)
 
 # HTML for the web server
+
 def web_page():
     html = """
     <html>
@@ -111,9 +112,9 @@ def calculateVector(teamLocation,height,targets,index):
     yMod=yCord-locY
     zMod=zCord-locZ
     
-    radius=math.sqrt(math.pow(xMod,2)+math.pow(yMod,2)+math.pow(zMod,2))
-    phi=math.degrees(math.acos(zMod/radius)) # Phi equals verticle movement
-    theta=math.degrees(math.atan2(yMod,xMod)) #Theta XY Plane
+    radius=float(math.sqrt(math.pow(xMod,2)+math.pow(yMod,2)+math.pow(zMod,2)))
+    phi=float(math.degrees(math.acos(zMod/radius))) # Phi equals verticle movement
+    theta=float(math.degrees(math.atan2(yMod,xMod))) #Theta XY Plane
     return theta,phi
     
 
@@ -126,6 +127,16 @@ def serverWebPage():
     url2=None
     GPIO.output(laser,GPIO.LOW)
     targets=[]
+    lock1 = multiprocessing.Lock()
+    lock2 = multiprocessing.Lock()
+    
+    angle1 = multiprocessing.Value('d', 0.0)  # 'd' is for double (float)
+    angle2 = multiprocessing.Value('d', 0.0)
+
+    m1=targeting.Stepper(pins1,lock1,angle1)
+    m2=targeting.Stepper(pins2,lock2,angle2)
+    m1.zero()
+    m2.zero()
     try:
         while True:
             conn, (client_ip, client_port) = s.accept()
@@ -157,12 +168,14 @@ def serverWebPage():
                     else:
                         print("URLs missing in POST data.")
                 elif data.get("phaseOne")=="PhaseOne":
-                    counter=0
                     for angle in angles:
                         m1.goAngle(angle[0])
                         m2.goAngle(angle[1])
-                        print("{counter}")
-                        counter+=counter
+                        GPIO.output(laser,GPIO.HIGH)
+                        time.sleep(3)
+                        GPIO.output(laser,GPIO.LOW)
+                        
+                        
                 elif data.get("phaseTwo") == "PhaseTwo":  # Ensure this matches the form's value
                     try:
                         targets = [
@@ -197,16 +210,7 @@ if __name__ == '__main__':
     # Use multiprocessing.Lock() to prevent a single motor from trying to 
     # execute multiple operations at the same time:
     
-    lock1 = multiprocessing.Lock()
-    lock2 = multiprocessing.Lock()
-    lock3=multiprocessing.Lock()
-    
-    angle1 = multiprocessing.Value('d', 0.0)  # 'd' is for double (float)
-    angle2 = multiprocessing.Value('d', 0.0)
-
-    m1=targeting.Stepper(pins1,lock1,angle1)
-    m2=targeting.Stepper(pins2,lock2,angle2)
-    l1=
+   
     
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -215,6 +219,8 @@ if __name__ == '__main__':
     print("Server started on port 8080.")
 
     # Start the server in a separate thread
+    m1.zero()
+    m2.zero()
     server_thread = threading.Thread(target=serverWebPage)
     server_thread.daemon = True
     server_thread.start()
