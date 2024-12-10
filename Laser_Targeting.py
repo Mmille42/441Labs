@@ -93,6 +93,8 @@ def listTargetData(data):
         y = float(target.get('y', 0))
         z = float(target.get('z', 0))
         target_data.append([target_number, x, y, z])
+        
+        target_data = sorted(target_data, key=lambda item: item[0])
     return target_data
 
 def findTeam(teams, team_name):
@@ -174,9 +176,12 @@ def serverWebPage():
                         GPIO.output(laser,GPIO.HIGH)
                         time.sleep(3)
                         GPIO.output(laser,GPIO.LOW)
+                    m1.goAngle(0.0)
+                    m2.goAngle(0.0)
                         
                         
                 elif data.get("phaseTwo") == "PhaseTwo":  # Ensure this matches the form's value
+                    
                     try:
                         targets = [
                             int(data.get("target1", 0)),
@@ -185,7 +190,19 @@ def serverWebPage():
                             int(data.get("target4", 0))
                             ]
                         targets = [t for t in targets if t > 0]
-                        
+                        for target_num in targets:
+                            theta, phi = angles[target_num - 1]  # Adjust for zero-based indexing
+                            m1.goAngle(theta)
+                            m2.goAngle(phi)
+                            print("Turning on laser...")
+                            GPIO.output(laser, GPIO.HIGH)
+                            time.sleep(3)
+                            GPIO.output(laser, GPIO.LOW)
+                        m1.goAngle(0.0)
+                        m2.goAngle(0.0)
+
+            print(f"Target {target_num} complete.")
+                            
                     except ValueError:
                         print("Invalid target input. Please enter numbers only.")
                         targets = []
@@ -232,9 +249,9 @@ if __name__ == '__main__':
         print('Shutting down')
         m1.goAngle(0)
         m2.goAngle(0)
+    finally:
         GPIO.cleanup()
         s.close()
         server_thread.join()
-
 
 
