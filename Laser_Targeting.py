@@ -24,35 +24,44 @@ def web_page():
     html = """
     <html>
     <head>
-        <meta charset="utf-8">
-        <title>Laser Targets</title>
+    <meta charset="utf-8">
+    <title>Laser Targets</title>
     </head>
-    <body>
-        <form action="/" method="POST">
-            <button name="led_toggle" type="submit" value="toggle">Toggle LED</button><br><br>
-        </form>
-        <form action="/" method="POST">
-            <label for="url1">Team Locations:</label>
-            <input type="text" id="url1" name="url1" placeholder="Enter a valid URL" required /><br><br>
-            <label for="url2">Target Positions:</label>
-            <input type="text" id="url2" name="url2" placeholder="Enter a valid URL" required /><br><br>
-            <input type="submit" name="upload" value="Upload">
-        </form>
-        <form action="/" method="POST">
-            <button name="phaseOne" type="submit" value="PhaseOne">Phase One</button><br><br>
-        </form>
-        <form action="/" method="POST">
-            <label for="target1">Target 1:</label>
-            <input type="number" id="target1" name="target1" placeholder="Enter a Target number" required /><br><br>
-            <label for="target2">Target 2:</label>
-            <input type="number" id="target2" name="target2" placeholder="Enter a Target number" required /><br><br>
-            <label for="target3">Target 3:</label>
-            <input type="number" id="target3" name="target3" placeholder="Enter a Target number" required /><br><br>
-            <label for="target4">Target 4:</label>
-            <input type="number" id="target4" name="target4" placeholder="Enter a Target number" required /><br><br>
-            <input type="submit" name="phaseTwo" value="PhaseTwo">
-        </form>
-    </body>
+        <body>
+            <form action="/" method="POST">
+                <label for="calibration">Calibration:</label>
+                <input type="checkbox" id="calibration" name="calibrate" value="on"><br>
+                <label for="xyMotor">XY Motor:</label>
+                <input type="number" id="xyMotor" name="xyMotor" placeholder="Enter # of steps to rotate" required /><br>
+                <label for="zMotor">Z Motor:</label>
+                <input type="number" id="zMotor" name="zMotor" placeholder="Enter # of steps to rotate" required /><br>
+                <input type="submit" name="adjust" value="Adjust"><br><br>
+            </form>
+            <form action="/" method="POST">
+                <button name="led_toggle" type="submit" value="toggle">Toggle LED</button><br><br>
+            </form>
+            <form action="/" method="POST">
+                <label for="url1">Team Locations:</label>
+                <input type="text" id="url1" name="url1" placeholder="Enter a valid URL" required /><br>
+                <label for="url2">Target Positions:</label>
+                <input type="text" id="url2" name="url2" placeholder="Enter a valid URL" required /><br>
+                <input type="submit" name="upload" value="Upload"><br><br>
+            </form>
+            <form action="/" method="POST">
+                <button name="phaseOne" type="submit" value="PhaseOne">Phase One</button><br><br>
+            </form>
+            <form action="/" method="POST">
+                <label for="target1">Target 1:</label>
+                <input type="number" id="target1" name="target1" placeholder="Enter a Target number" required /><br>
+                <label for="target2">Target 2:</label>
+                <input type="number" id="target2" name="target2" placeholder="Enter a Target number" required /><br>
+                <label for="target3">Target 3:</label>
+                <input type="number" id="target3" name="target3" placeholder="Enter a Target number" required /><br>
+                <label for="target4">Target 4:</label>
+                <input type="number" id="target4" name="target4" placeholder="Enter a Target number" required /><br>
+                <input type="submit" name="phaseTwo" value="PhaseTwo">
+            </form>
+        </body>
     </html>
     """
     return bytes(html, 'utf-8')
@@ -127,6 +136,7 @@ def serverWebPage():
     angles=[]
     url1=None
     url2=None
+    
     GPIO.output(laser,GPIO.LOW)
     targets=[]
     lock1 = multiprocessing.Lock()
@@ -148,8 +158,16 @@ def serverWebPage():
 
             if "POST" in client_message:
                 data = parsePostData(client_message)
-                
-                if data.get("led_toggle") == "toggle":
+                if data.get("calibrate")=="on":
+                    if data.get("adjust")=="Adjust":
+                        thetaM=int(data.get("xyMotor"),0)
+                        phiM=int(data.get("zMotor"),0)
+                        m1.rotate(thetaM)
+                        m2.rotate(phiM)
+                        m1.zero()
+                        m2.zero()
+                        print("Calibrated")
+                elif data.get("led_toggle") == "toggle":
                     state=GPIO.input(laser)
                     GPIO.output(laser,not state)
                     print(f"{state}")
@@ -200,8 +218,7 @@ def serverWebPage():
                             GPIO.output(laser, GPIO.LOW)
                         m1.goAngle(0.0)
                         m2.goAngle(0.0)
-
-            print(f"Target {target_num} complete.")
+                        print(f"Target {target_num} complete.")
                             
                     except ValueError:
                         print("Invalid target input. Please enter numbers only.")
@@ -236,8 +253,6 @@ if __name__ == '__main__':
     print("Server started on port 8080.")
 
     # Start the server in a separate thread
-    m1.zero()
-    m2.zero()
     server_thread = threading.Thread(target=serverWebPage)
     server_thread.daemon = True
     server_thread.start()
@@ -247,10 +262,9 @@ if __name__ == '__main__':
             pass
     except KeyboardInterrupt:
         print('Shutting down')
-        m1.goAngle(0)
-        m2.goAngle(0)
     finally:
         GPIO.cleanup()
+        print('Good Bye')
         s.close()
         server_thread.join()
 
