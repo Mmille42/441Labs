@@ -162,8 +162,8 @@ def serverWebPage():
                     if data.get("adjust")=="Adjust":
                         thetaM=int(data.get("xyMotor"),0)
                         phiM=int(data.get("zMotor"),0)
-                        m1.rotate(thetaM)
-                        m2.rotate(phiM)
+                        m2.rotate(thetaM)
+                        m1.rotate(phiM)
                         m1.zero()
                         m2.zero()
                         print("Calibrated")
@@ -183,7 +183,7 @@ def serverWebPage():
                         target_info = listTargetData(targets_data)
                         teamFound = findTeam(team_info, "Test")
                         for idx, tar in enumerate(target_info):
-                            angles.append(calculateVector(teamFound, 25.0, target_info, idx))
+                            angles.append(calculateVector(teamFound, 19.5, target_info, idx))
                         print(f"angles: {angles}")
                     else:
                         print("URLs missing in POST data.")
