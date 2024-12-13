@@ -8,6 +8,7 @@ from urllib.parse import unquote
 import threading
 import math
 import json
+import os
 import targeting
 
 # GPIO setup
@@ -127,7 +128,29 @@ def calculateVector(teamLocation,height,targets,index):
     phi=float(math.degrees(math.acos(zMod/radius))) # Phi equals verticle movement
     theta=float(math.degrees(math.atan2(yMod,xMod))) #Theta XY Plane
     return theta,phi
-    
+
+def orderTargets(starting_angle, angles):
+    num_targets = len(angles)
+    visited = [False] * num_targets
+    order = []
+    current_theta, current_phi = starting_angle
+    for _ in range(num_targets):
+        min_distance = float('inf')
+        next_index = None
+
+        for i in range(num_targets):
+            if not visited[i]:
+                distance = abs(current_theta - angles[i][0]) + abs(current_phi - angles[i][1])
+                if rotation < min_rotation:
+                    min_rotation = rotation
+                    next_index = i
+
+        visited[next_index] = True
+        order.append(next_index + 1)
+        current_theta, current_phi = angles[next_index]
+
+    return order
+
 def angleTime(angle1, angle2):
     delay=1200*1e-6 
     if angle1 > angle2:
@@ -222,10 +245,12 @@ def serverWebPage():
                             int(data.get("target4", 0))
                             ]
                         targets = [t for t in targets if t > 0]
-                        for target_num in targets:
+                        ordered_targets = orderTargets((0,0),[angles[t - 1] for t in targets])
+                        for target_num in ordered_targets:
                             theta, phi = angles[target_num - 1]  # Adjust for zero-based indexing
                             m2.goAngle(theta)
                             m1.goAngle(phi)
+                            print(f"{angles[target_num - 1]}")
                             time.sleep(angleTime(theta,phi)*2.4)
                             print("Turning on laser...")
                             GPIO.output(laser, GPIO.HIGH)
@@ -282,3 +307,5 @@ if __name__ == '__main__':
         print('Good Bye')
         s.close()
         server_thread.join()
+
+
