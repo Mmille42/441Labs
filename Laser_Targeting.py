@@ -135,12 +135,12 @@ def orderTargets(starting_angle, angles):
     order = []
     current_theta, current_phi = starting_angle
     for _ in range(num_targets):
-        min_distance = float('inf')
+        min_rotation = float('inf')
         next_index = None
 
         for i in range(num_targets):
             if not visited[i]:
-                distance = abs(current_theta - angles[i][0]) + abs(current_phi - angles[i][1])
+                rotation = abs(current_theta - angles[i][0]) + abs(current_phi - angles[i][1])
                 if rotation < min_rotation:
                     min_rotation = rotation
                     next_index = i
