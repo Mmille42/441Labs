@@ -128,7 +128,16 @@ def calculateVector(teamLocation,height,targets,index):
     theta=float(math.degrees(math.atan2(yMod,xMod))) #Theta XY Plane
     return theta,phi
     
-
+def angleTime(angle1, angle2):
+    delay=1200*1e-6 
+    if angle1 > angle2:
+        steps=angle1*4096/360
+        delay=delay*steps
+        return delay
+    else:
+        steps=angle2*4096/360
+        delay=delay*steps
+        return delay
 
 
 # Web server to handle requests
@@ -188,12 +197,17 @@ def serverWebPage():
                     else:
                         print("URLs missing in POST data.")
                 elif data.get("phaseOne")=="PhaseOne":
+                    m1.zero()
+                    m2.zero()
                     for angle in angles:
-                        m1.goAngle(angle[0])
-                        m2.goAngle(angle[1])
-                        GPIO.output(laser,GPIO.HIGH)
-                        time.sleep(3)
                         GPIO.output(laser,GPIO.LOW)
+                        m2.goAngle(angle[0])
+                        m1.goAngle(angle[1])
+                        time.sleep(angleTime(angle[0],angle[1])*2.4)
+                        print("Turning on laser...")
+                        GPIO.output(laser, GPIO.HIGH)
+                        time.sleep(3)
+                        GPIO.output(laser, GPIO.LOW)
                     m1.goAngle(0.0)
                     m2.goAngle(0.0)
                         
@@ -210,8 +224,9 @@ def serverWebPage():
                         targets = [t for t in targets if t > 0]
                         for target_num in targets:
                             theta, phi = angles[target_num - 1]  # Adjust for zero-based indexing
-                            m1.goAngle(theta)
-                            m2.goAngle(phi)
+                            m2.goAngle(theta)
+                            m1.goAngle(phi)
+                            time.sleep(angleTime(theta,phi)*2.4)
                             print("Turning on laser...")
                             GPIO.output(laser, GPIO.HIGH)
                             time.sleep(3)
@@ -267,5 +282,3 @@ if __name__ == '__main__':
         print('Good Bye')
         s.close()
         server_thread.join()
-
-
